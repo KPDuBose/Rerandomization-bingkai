@@ -22,18 +22,29 @@ SLmethods <- c("SL.glm", "SL.rpart", "SL.nnet")
 expit <- function(x){1/(1+exp(-x))}
 
 n <- 400
+# Sample size - varied
+# n <- c(30, 100, 250, 500, 1000)
 pi <- 0.5
 n_sim <- 100
+# Get threshold to vary
+# qchisq(c(0.4, 0.2, 0.1, 0.01), df = 2)
 tt <- 1
+# tt <- qchisq(c(0.4, 0.2, 0.1, 0.01), df = 2)
 
 tictoc::tic()
 results <- foreach(iter = 1:n_sim, .combine = cbind, .packages = package_list) %dopar% {
   
+  # Generate X1
   X1 <- rnorm(n, 1, 1)
+  # Generate Strata (Based on X1, when X1 is present, probability of assignment to S_1 strata is higher)
   S <- rbinom(n, size = 1, prob = 0.4 + 0.2 * (X1 < 1))
+  # Generate X2
   X2 <- rnorm(n, 0, 1)
+  # Outcomes under Treatment (Y1) and Control (Y0) 
+  # Double check in the paper that treatment effect is 4 * X2^2 * S
   Y1 <- 2 * exp(X1) + 4 * X2^2 * S + abs(X2) + rnorm(n, 0, 1)
   Y0 <- 2 * exp(X1) + abs(X2) + rnorm(n, 0, 1) 
+  # Is the data missing under Treatment (R1) and Control (R0) - Informative missing?
   R1 <- rbinom(n, size = 1, prob = mean(expit(1.2 + X2 + S)))
   R0 <- rbinom(n, size = 1, prob = mean(expit(0.6 + X2 + S)))
   # R1 <- rbinom(n, size = 1, prob = 0.7)
@@ -248,7 +259,7 @@ results <- foreach(iter = 1:n_sim, .combine = cbind, .packages = package_list) %
   R2_dml_stre <- t(cIIF) %*% solve(n * VI) %*% cIIF /V_dml_stre
 
  
-  # result
+  # result - 18 metrics per simulation
   c(est_dr_s, V_dr_s, 0, est_dml_s, V_dml_s, 0, 
     est_dr_re, V_dr_re, R2_dr_re, est_dml_re, V_dml_re, R2_dml_re, 
     est_dr_stre, V_dr_stre, R2_dr_stre, est_dml_stre, V_dml_stre, R2_dml_stre)
